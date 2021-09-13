@@ -1,0 +1,1 @@
+cat ./entry.xml |curl -X POST --header "Content-Type:application/xml" --data-binary @- "192.168.88.6:5000/flomo?signature=4636688d4fe6ccaba20803f0b13fb65c6cc69680&echostr=117406811494240250&timestamp=1631585864&nonce=1536349437" 

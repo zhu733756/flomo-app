@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flomo-app
+  namespace: dev
+  labels:
+    app: flomo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flomo
+  template:
+    metadata:
+      labels:
+        app: flomo
+    spec:
+      containers:
+      - name: flomo-app
+        image: zhu733756/flomo:latest
+        imagePullPolicy: "IfNotPresent"
+        ports:
+        - containerPort: 5000
+        env:
+          - name: "FLOMO_USERNAME"
+            value: ""
+          - name: "FLOMO_PASSWORD"
+            value: ""
+          - name : "TOKEN"
+            value: ""
+          - name : "APPID"
+            value: ""
+          - name : "APPSECRET"
+            value: ""
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flomo-app
+  namespace: dev
+spec:
+  selector:
+    app: flomo
+  ports:
+    - name: flomo-app
+      port: 5000
+      protocol: TCP
+      targetPort: 5000
+      nodePort: 31001
+  type: NodePort        

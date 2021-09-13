@@ -1,0 +1,3 @@
+requests
+wechat_sdk
+flask
