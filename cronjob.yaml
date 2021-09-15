@@ -1,0 +1,25 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: flomo-cronjob
+  namespace: dev
+spec:
+  schedule: "*/2 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: flomo-cronjob
+            image: curlimages/curl:latest
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - curl -X GET http://${FLOMO_HOST}:${FLOMO_PORT}/flomo/cronjobs;
+            env:
+            - name: "FLOMO_HOST"
+              value: "192.168.88.6"
+            - name: "FLOMO_PORT"
+              value: "31001"
+          restartPolicy: OnFailure

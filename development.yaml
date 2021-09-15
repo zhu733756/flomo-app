@@ -32,6 +32,8 @@ spec:
             value: ""
           - name : "APPSECRET"
             value: ""
+          - name: "AES_KEY"
+            value: ""
 ---
 apiVersion: v1
 kind: Service

@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+
 from settings import UA, LOGIN_REFERER,LOGIN_API,LIST_CONTENTS,LIST_TAGS,MAX_ERROR_COUNT
 import requests
 import json

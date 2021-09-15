@@ -1,22 +1,27 @@
-from flask import Flask, request,  make_response
+# -*- coding: UTF-8 -*-
+
+from flask import Flask, request, make_response
 import os
 from wechat_sdk import WechatConf
 from wechat_sdk import WechatBasic
+from werkzeug import datastructures
 from app_flomo import get_article
-import xml.etree.ElementTree as ET
-import time
 import re
+import time
 
 app = Flask(__name__)
 
+AES_KEY = os.getenv("AES_KEY","")
 wechatConf = WechatConf(
     token=os.getenv("TOKEN",""),
     appid=os.getenv("APPID",""),
-    appsecret=os.getenv("APPSECRET","")
-    # encrypt_mode="safe",
+    appsecret=os.getenv("APPSECRET",""),
+    encrypt_mode="compatible"
 )
-
+wechatConf.encoding_aes_key = AES_KEY if AES_KEY else None
 wechat = WechatBasic(conf=wechatConf)
+
+registers = set()
 
 @app.route("/flomo", methods=["GET","POST"])
 def flomo_article():
@@ -33,50 +38,62 @@ def flomo_article():
     if request.method == "GET":
         return make_response(echostr)
     else:
-        xml = ET.fromstring(request.data)
-        toUser = xml.find('ToUserName').text
-        fromUser = xml.find('FromUserName').text
-        msgType = xml.find("MsgType").text
+        wechat.parse_data(request.data)
+        wechat_message = wechat.message
+        response = wechat.response_none()      
+        if wechat_message.type == 'text':
+            content = wechat_message.content
+            if content == "#注册":
+                registers.add(wechat_message.source)
+                response = wechat.response_text("注册成功")
+            elif content == "#取消注册":
+                registers.remove(wechat_message.source)
+                response = wechat.response_text("取消注册成功")
+            elif content in ("笔记"):
+                artile = pure_article(get_article(app)["content"])
+                response = wechat.response_text(artile)
+            elif content in ("flomo"):
+                slug = get_article(app)["slug"]
+                response = wechat.response_text(f"https://flomoapp.com/mine?memo_id={slug}")
+            elif content in ("prometheus","prom"):
+                response = wechat.response_text("链接：https://pan.baidu.com/s/1ej8sCmbt1mOD8rM4jV9q3A 提取码：prom") 
+            elif content in ("科学上网"):
+                response = wechat.response_text("链接：https://pan.baidu.com/s/1_3qDjmdSd7hZM71aEQfb4g 提取码：ti8j")
 
-        if msgType == 'text':
-            content = xml.find('Content').text
-            if content in ("笔记"):
-                artile = get_article(app)
-                return reply_text(fromUser,toUser, pure_article(artile["content"]))
+        response = make_response(response)
+        response.content_type = 'application/xml'
+        return response
 
-            if content in ("flomo"):
-                artile = get_article(app)
-                slug = artile["slug"]
-                return reply_text(fromUser,toUser, f"https://flomoapp.com/mine?memo_id={slug}")
-
-            if content in ("prometheus","prom"):
-                return reply_text(fromUser,toUser, "链接：https://pan.baidu.com/s/1ej8sCmbt1mOD8rM4jV9q3A 提取码：prom")
-            
-            if content in ("科学上网"):
-                return reply_text(fromUser,toUser, "链接：https://pan.baidu.com/s/1_3qDjmdSd7hZM71aEQfb4g 提取码：ti8j")
-
-        
-        return reply_text(fromUser,toUser, "你再说一遍？我听不懂")
-
-def pure_article(artcile):
-    pat = re.compile(r'<[^>]+>',re.S)
-    return pat.sub('', artcile)
-
-def reply_text(to_user, from_user, content):
-    reply = """
-    <xml><ToUserName><![CDATA[%s]]></ToUserName>
-    <FromUserName><![CDATA[%s]]></FromUserName>
-    <CreateTime>%s</CreateTime>
-    <MsgType><![CDATA[text]]></MsgType>
-    <Content><![CDATA[%s]]></Content>
-    <FuncFlag>0</FuncFlag></xml>
-    """
-    response = make_response(reply % (to_user, from_user,
-                                      str(int(time.time())), content))
-    response.content_type = 'application/xml'
+@app.route("/flomo/cronjobs", methods=["GET"])
+def reply_registriers():
+    for source in registers:
+        artile_content = pure_article(get_article(app)["content"])
+        app.logger.info(f"Send to user {source}, Article: {artile_content}")
+        post_singlesend(source, artile_content)
+        time.sleep(0.5)
+    response = make_response(f"registers: {','.join(registers)} 发送成功")
     return response
+
+def post_singlesend(source, article_content):
+    url = "https://mp.weixin.qq.com/cgi-bin/singlesend"
+    data = {
+        "token": wechat.grant_token(),
+        "lang": "zh_CN",
+        "f": "json",
+        "ajax": "1",
+        "mask": "false",
+        "tofakeid": source,
+        "type": 1,
+        "content": article_content,
+        "appmsg":"", 
+    }
+    wechat.request.post(url, data=data)
+        
+def pure_article(artcile):
+    pat1 = re.compile(r'<[^>]+>',re.S)
+    pat2 = re.compile(r'<[^/]+>',re.S)
+    return pat1.sub('\n', pat2.sub('', artcile))
 
 
 if __name__ == '__main__':
     app.run("0.0.0.0", 5000, debug=False)
-    
