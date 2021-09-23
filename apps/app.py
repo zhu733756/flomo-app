@@ -1,13 +1,15 @@
 # -*- coding: UTF-8 -*-
 
-from flask import Flask, request, make_response
+from random import random
+from flask import Flask, request, make_response, render_template_string
 import os
 from wechat_sdk import WechatConf
 from wechat_sdk import WechatBasic
-from werkzeug import datastructures
 from app_flomo import get_article
 import re
 import time
+import subprocess
+import random
 
 app = Flask(__name__)
 
@@ -23,7 +25,15 @@ wechat = WechatBasic(conf=wechatConf)
 
 registers = set()
 
-@app.route("/flomo", methods=["GET","POST"])
+template = """
+<pre>
+{% for line in lines %}
+    {{ line }}
+{% endfor %}
+</pre>
+"""
+
+@app.route("/app/flomo", methods=["GET","POST"])
 def flomo_article():
     echostr = request.values.get('echostr', '')
     signature = request.values.get('signature', '')
@@ -64,8 +74,46 @@ def flomo_article():
         response.content_type = 'application/xml'
         return response
 
-@app.route("/flomo/cronjobs", methods=["GET"])
-def reply_registriers():
+@app.route("/app/flomo/articles/random", methods=["GET"])
+def get_flomo_articles():
+    content = request.values.get('dashuaibi', '')
+    if content == "zhu733756":
+        artile = get_article(app)["content"]
+    else:
+        slug = get_article(app)['slug']
+        artile = f"https://flomoapp.com/mine?memo_id={slug}"
+    return make_response(artile)
+
+@app.route("/app/algorithmCoding/repo/update", methods=["GET"])
+def update_github_repo():
+    content = request.values.get('dashuaibi', '')
+    r_token = request.values.get('token', '')
+    token = os.getenv("TOKEN","")
+    response = "ok"
+    if content == "zhu733756" and r_token == token:
+        completed = subprocess.run(['cd','/gitRepo/AlgorithmCoding','&&','git', 'pull', 'origin', 'master'])
+        response = completed.returncode
+    return  make_response(response)
+
+@app.route("/app/algorithmCoding/articles/random", methods=["GET"])
+def get_algorithm_coding_articles():
+    content = request.values.get('dashuaibi', '')
+    lines = []
+    if content == "zhu733756":
+        paths = []
+        recursive("/gitRepo/AlgorithmCoding/", paths=paths)
+        if paths:
+            article_path = random.choice(paths)
+            try:
+                with open(article_path, "r", encoding="utf-8") as file:
+                    for line in file.readlines():
+                        lines.append(line.rstrip("\n"))
+            except Exception as e:
+                app.logger.error(f"Error: {e.args}")
+    return render_template_string(template, lines=lines)
+
+@app.route("/app/flomo/cronjobs", methods=["GET"])
+def reply_registers():
     for source in registers:
         artile_content = pure_article(get_article(app)["content"])
         app.logger.info(f"Send to user {source}, Article: {artile_content}")
@@ -93,6 +141,16 @@ def pure_article(artcile):
     pat1 = re.compile(r'<[^>]+>',re.S)
     pat2 = re.compile(r'<[^/]+>',re.S)
     return pat1.sub('\n', pat2.sub('', artcile))
+
+def recursive(dirpath, suffix="py", paths = []):
+    for path in os.listdir(dirpath):
+        curpath = os.path.join(dirpath, path)
+        if os.path.isdir(curpath):
+            recursive(curpath, suffix, paths)
+        elif path.endswith(suffix) and not path.startswith("__init__"):
+            paths.append(curpath)
+
+
 
 
 if __name__ == '__main__':

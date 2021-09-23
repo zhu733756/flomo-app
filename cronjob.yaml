@@ -4,7 +4,7 @@ metadata:
   name: flomo-cronjob
   namespace: dev
 spec:
-  schedule: "*/2 * * * *"
+  schedule: "0 0 * * *"
   jobTemplate:
     spec:
       template:
@@ -16,10 +16,12 @@ spec:
             command:
             - /bin/sh
             - -c
-            - curl -X GET http://${FLOMO_HOST}:${FLOMO_PORT}/flomo/cronjobs;
+            - curl -X GET http://${FLOMO_HOST}:${FLOMO_PORT}/app/algorithmCoding/repo/update?dashuaibi=zhu733756&token=${TOKEN};
             env:
             - name: "FLOMO_HOST"
-              value: "192.168.88.6"
+              value: ""
             - name: "FLOMO_PORT"
-              value: "31001"
+              value: ""
+            - name: "TOKEN"
+              value: ""
           restartPolicy: OnFailure

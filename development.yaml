@@ -1,23 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: flomo-app
+  name: app-codes
   namespace: dev
   labels:
-    app: flomo
+    app: projects
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: flomo
+      app: projects
   template:
     metadata:
       labels:
-        app: flomo
+        app: projects
     spec:
+      volumes:
+      - name: repo
+        hostPath:
+          path: /gitRepo
       containers:
-      - name: flomo-app
-        image: zhu733756/flomo:latest
+      - name: app-projects
+        image: zhu733756/app-codes:latest
         imagePullPolicy: "IfNotPresent"
         ports:
         - containerPort: 5000
@@ -34,17 +38,20 @@ spec:
             value: ""
           - name: "AES_KEY"
             value: ""
+        volumeMounts:
+        - name: repo
+          mountPath: /gitRepo
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: flomo-app
+  name: app-codes
   namespace: dev
 spec:
   selector:
-    app: flomo
+    app: projects
   ports:
-    - name: flomo-app
+    - name: app-projects
       port: 5000
       protocol: TCP
       targetPort: 5000

@@ -3,31 +3,41 @@
 from settings import UA, LOGIN_REFERER,LOGIN_API,LIST_CONTENTS,LIST_TAGS,MAX_ERROR_COUNT
 import requests
 import json
+from urllib.parse import unquote
 import os
 import random
+
+cookies_dirpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),"cookies.json")
 
 def generate_cookies(app=None):
     USERNAME = os.getenv("FLOMO_USERNAME","")
     PASSWORD = os.getenv("FLOMO_PASSWORD","")
     LOGIN_HEADERS= {
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
         "user-agent": UA,
-        "referer": LOGIN_REFERER
+        "referer": LOGIN_REFERER,
     }
     data = {
-        "email":USERNAME,
-        "password":PASSWORD
+        "email": USERNAME,
+        "password": PASSWORD
     }
-    req = requests.post(LOGIN_API, data=data, headers=LOGIN_HEADERS, verify=False)
-    if req.status_code == 200 and req.json()["code"] == 0:
-        cookies = req.cookies.get_dict()
-        with open("./cookies.json","w") as file:
+    
+    r = requests.get(LOGIN_API, headers=LOGIN_HEADERS, verify=False)
+    cookies = r.cookies.get_dict()
+    LOGIN_HEADERS['x-xsrf-token'] = unquote(cookies["XSRF-TOKEN"])
+
+    response = requests.post(LOGIN_API, data=data, headers=LOGIN_HEADERS, cookies=cookies, verify=False)
+    response.raise_for_status()
+    if response.status_code != 204:
+        cookies = response.cookies.get_dict()
+        with open(cookies_dirpath, "w" ,encoding="utf-8") as file:
             json.dump(cookies, file)
         return cookies
     else:
-        app.logger.error(f"Login Flomo Error：{req.json()}")
+        app.logger.error(f"Login Flomo Error：{response.json()['message']}")
 
 def load_cookies():
-    with open("./cookies.json","r") as file:
+    with open(cookies_dirpath,"r") as file:
         cookies = json.load(file)
         return cookies
 
