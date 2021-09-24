@@ -26,11 +26,11 @@ wechat = WechatBasic(conf=wechatConf)
 registers = set()
 
 template = """
-<pre>
 {% for line in lines %}
+<pre>
     {{ line }}
-{% endfor %}
 </pre>
+{% endfor %}
 """
 
 @app.route("/app/flomo", methods=["GET","POST"])
@@ -91,8 +91,9 @@ def update_github_repo():
     token = os.getenv("TOKEN","")
     response = "ok"
     if content == "zhu733756" and r_token == token:
-        completed = subprocess.run(['cd','/gitRepo/AlgorithmCoding','&&','git', 'pull', 'origin', 'master'])
-        response = completed.returncode
+        completed = subprocess.run(['cd','/gitRepo/AlgorithmCoding','&&','git', 'pull', 'origin', 'master'], shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if completed.stdout or completed.stderr:
+            response = completed.stdout or completed.stderr
     return  make_response(response)
 
 @app.route("/app/algorithmCoding/articles/random", methods=["GET"])
