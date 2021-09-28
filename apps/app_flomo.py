@@ -5,7 +5,7 @@ import requests
 import json
 from urllib.parse import unquote
 import os
-import random
+# import random
 
 cookies_dirpath = os.path.join(os.path.dirname(os.path.abspath(__file__)),"cookies.json")
 
@@ -73,7 +73,7 @@ def get_article(app=None):
     while error_counts < MAX_ERROR_COUNT :
         contents = pull_contents(app, cookies)
         if len(contents) > 0:
-            return random.choice(contents)
+            return contents
         app.logger.warning(f"Error pull contents:{error_counts}")
         error_counts += 1
         cookies = generate_cookies(app)
